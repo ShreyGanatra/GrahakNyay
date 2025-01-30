@@ -147,30 +147,73 @@
             }
 
             disableSendButton();
-
             $('#chat-container').append('<div class="message user-message">' + message + '</div>');
             $('#user-input').val('');
             $('#processing-spinner').show();
-            
-            $.ajax({
-                url: `${baseUrl}/chat`,
-                type: 'POST',
-                contentType: 'application/json',
-                data: JSON.stringify({message: message, session_id: sessionId}),
-                success: function(response) {
-                    var botMessageDiv = $('<div class="message bot-message"></div>');
-                    botMessageDiv.html(response.response);
-                    $('#chat-container').append(botMessageDiv);
-                    $('#chat-container').scrollTop($('#chat-container')[0].scrollHeight);
-                },
-                error: function(xhr, status, error) {
-                    alert('Error: ' + xhr.responseJSON.error);
-                },
-                complete: function() {
-                    $('#processing-spinner').hide();
-                    enableSendButton();
-                }
+
+            const source = new EventSource(`${baseUrl}/chat?message=${encodeURIComponent(message)}&session_id=${sessionId}`);
+            let botMessageDiv = $('<div class="message bot-message"></div>');
+            $('#chat-container').append(botMessageDiv);
+
+            source.onmessage = function(event) {
+                botMessageDiv.append(event.data);
+                $('#chat-container').scrollTop($('#chat-container')[0].scrollHeight);
+            };
+
+            source.onerror = function(event) {
+                source.close();
+                $('#processing-spinner').hide();
+                enableSendButton();
+            };
+
+            source.addEventListener('done', function(event) {
+                source.close();
+                $('#processing-spinner').hide();
+                enableSendButton();
             });
+
+            source.addEventListener('context', function(event) {
+                const contextData = JSON.parse(event.data);
+                console.log('Context:', contextData);
+                // Handle context data as needed
+            });
+        }
+        // async function sendMessage(message = null) {
+        //     if (!message) {
+        //         message = $('#user-input').val();
+        //     }
+        //     if (message.trim() === '') return;
+
+        //     if (!firstMessageSent) {
+        //         hideExamples();
+        //     }
+
+        //     disableSendButton();
+
+        //     $('#chat-container').append('<div class="message user-message">' + message + '</div>');
+        //     $('#user-input').val('');
+        //     $('#processing-spinner').show();
+            
+        //     $.ajax({
+        //         url: `${baseUrl}/chat`,
+        //         type: 'POST',
+        //         contentType: 'application/json',
+        //         data: JSON.stringify({message: message, session_id: sessionId}),
+        //         success: function(response) {
+        //             var botMessageDiv = $('<div class="message bot-message"></div>');
+        //             botMessageDiv.html(response.response);
+        //             console.log(response.content);
+        //             $('#chat-container').append(botMessageDiv);
+        //             $('#chat-container').scrollTop($('#chat-container')[0].scrollHeight);
+        //         },
+        //         error: function(xhr, status, error) {
+        //             alert('Error: ' + xhr.responseJSON.error);
+        //         },
+        //         complete: function() {
+        //             $('#processing-spinner').hide();
+        //             enableSendButton();
+        //         }
+        //     });
             // let isNewMessage = true;
 
             // const source = new EventSource(`${baseUrl}/chat?message=${message}&session_id=${sessionId}`);
@@ -199,7 +242,7 @@
             //     $('#processing-spinner').hide();
             //     enableSendButton();
             // });
-        };
+        // };
             
 
         $('#user-input').keypress(function(e) {

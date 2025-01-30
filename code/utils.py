@@ -4,15 +4,24 @@ from langchain_huggingface import (
     ChatHuggingFace,
     HuggingFacePipeline,
     HuggingFaceEmbeddings,
+    HuggingFaceEndpoint,
 )
+from langchain_openai import ChatOpenAI
 from transformers import AutoTokenizer, AutoModelForCausalLM, TextStreamer, pipeline
 from langchain_core.prompts import MessagesPlaceholder, ChatPromptTemplate
 from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain.chains import create_history_aware_retriever, create_retrieval_chain
 from datetime import datetime
+import os
+from prompts import get_prompt
 
-def get_chunks():
-    loader = CSVLoader(file_path="/home/pushpak/shrey/legalLLM/demo/rag_qa.csv", 
+
+# get current path
+current_path = os.path.dirname(os.path.realpath(__file__))
+
+def get_chunks(qa_path):
+    path_to_csv = os.path.join(current_path, qa_path)
+    loader = CSVLoader(file_path=path_to_csv, 
         metadata_columns=["Filename"],
         source_column="Filename",
         csv_args={
@@ -33,32 +42,44 @@ def get_vectorstore(doc_chunks):
 
 def get_llm():
 
-    tok = AutoTokenizer.from_pretrained("meta-llama/Meta-Llama-3.1-8B-Instruct")
-    model = AutoModelForCausalLM.from_pretrained("meta-llama/Meta-Llama-3.1-8B-Instruct")
-    streamer = TextStreamer(tok,skip_prompt=True)
+    # tok = AutoTokenizer.from_pretrained("meta-llama/Meta-Llama-3.1-8B-Instruct")
+    # model = AutoModelForCausalLM.from_pretrained("meta-llama/Meta-Llama-3.1-8B-Instruct")
+    # streamer = TextStreamer(tok,skip_prompt=True)
 
-    pipe = pipeline(
-        task="text-generation",
-        model = model,
-        tokenizer = tok,
-        # streamer = streamer,
-        pad_token_id=tok.eos_token_id,
-        device=0,
-        return_full_text=False,
-        max_new_tokens=1024,
-        do_sample=True,
-    )
+    # pipe = pipeline(
+    #     task="text-generation",
+    #     model = model,
+    #     tokenizer = tok,
+    #     # streamer = streamer,
+    #     temperature = 0.0,
+    #     pad_token_id=tok.eos_token_id,
+    #     device=0,
+    #     return_full_text=False,
+    #     max_new_tokens=2048,
+    #     do_sample=False,
+    # )
 
-    llm = HuggingFacePipeline(
-        pipeline = pipe,
-        model_id = "meta-llama/Meta-Llama-3.1-8B-Instruct",
-    )
+    # llm = HuggingFacePipeline(
+    #     pipeline = pipe,
+    #     model_id = "meta-llama/Meta-Llama-3.1-8B-Instruct",
+    # )
 
-    llm_engine_hf = ChatHuggingFace(llm=llm, tokenizer=tok)
+    # llm_engine_hf = ChatHuggingFace(llm=llm, tokenizer=tok)
+    # llm = HuggingFaceEndpoint(
+    #     endpoint_url="localhost:8080/v1/chat/completions",
+    #     streaming=True,
+    # )
 
+    # llm_engine_hf = ChatHuggingFace(llm=llm)
+    llm_engine_hf = ChatOpenAI(
+        # model_id="meta-llama/Meta-Llama-3.1-8B-Instruct",
+        openai_api_key="EMPTY",
+        openai_api_base="http://172.17.0.1:8080/v1/",
+        temperature=0,
+        )
     return llm_engine_hf
 
-def get_conversation_chain(retriever, llm_engine_hf):
+def get_conversation_chain(retriever, llm_engine_hf, one_shot=False, general_corpus=False, rag=True):
 
     contextualize_q_system_prompt = (
         "Given a chat history and the latest user question "
@@ -82,46 +103,7 @@ def get_conversation_chain(retriever, llm_engine_hf):
     history_aware_retriever = create_history_aware_retriever(
         llm_engine_hf, retriever, contextualize_q_prompt
     )
-    system_prompt ='''
-You are a Consumer Grievance Assistance Chatbot designed to help people with consumer law grievances in India. Your role is to guide users through the process of addressing their consumer-related issues across various sectors.
-Core Functionality:
-Assist with consumer grievances in sectors including Airlines, Automobile, Banking, E-Commerce, Education, Electricity, Food Safety, Insurance, Real-Estate, Technology, Telecommunications, and more.
-Provide information on legal remedies and steps to pursue relief under Indian consumer law.
-Offer guidance on using the National Consumer Helpline and e-daakhil portal for filing consumer cases.
-Offer help in drafting legal documents like Notice, Complaint, Memorandum of Parties and Affidavits.
-Conversation Flow:
-1.Greet the user and ask about their consumer grievance.
-2.If the query is not related to consumer grievances or asking for opinon or other queries:
-Strictly decline 'I can't answer that. I can help you with consumer-related issues.' and ask for a consumer grievance-related query. Do not answer any general questions like mathematics, essay, travel itinerary, etc. Do not give opinions. Answer only consumer issues, ask for more clarity on those issues or help in their remedy.
-3.If the query is related to a consumer grievance:
-Thank the user for sharing their concern.
-Ask one question at a time to gather more information:
-a. Request details about what led to the issue (if cause is not clear).
-b. Ask the user for the time of incident. Statue of limitations is 2 years. If the incident is more than 2 years old warn the user regarding the same. Today's date is {date}
-c. Ask for information about the opposing party (if needed).
-d. Inquire about desired relief (if not specified).
-4.Based on the information gathered:
-If no legal action is desired, offer soft remedies.
-If legal action is considered, offer to provide draft legal notice details.
-5.Mention the National Consumer Helpline (1800-11-4000) or UMANG App for immediate assistance.
-6.Offer to provide a location-based helpline number if needed.
-7.Ask if there's anything else the user needs help with.
-
-
-Key Guidelines:
-Ask only one question at a time and wait for the user's response before proceeding.
-Tailor your responses based on the information provided by the user.
-Provide concise, relevant information at each step.
-Always be polite and professional in your interactions.
-Use only the following pieces of retrieved context to answer the question if giving out information.
-If user asks any question which requires information like address, contact details or details of organisation, give information only if it is present in the context
-If user asks for any information like address, contact details or details of organisation that is not in context, tell that you do not have this information and suggest ways he can obtain this information.
-Use only the facts/names provided in the context or by the user.
-Don't let the user know you answered the question using the context.
-\n\n
-Here is the Context:
-{context}
-'''
+    system_prompt = get_prompt(one_shot=one_shot,general_corpus=general_corpus)
 
     qa_prompt = ChatPromptTemplate([
         ("system", system_prompt),
@@ -134,3 +116,27 @@ Here is the Context:
     rag_chain = create_retrieval_chain(history_aware_retriever, question_answer_chain)
 
     return  rag_chain
+
+
+def convert_to_html(text: str) -> str:
+    """
+    Convert markdown-like text to HTML format.
+    Handles newlines, bold, italic, and code formatting.
+    """
+    replacements = {
+        '\n': '<br>',
+        '**': '</b>',  # Bold
+        '*': '</i>',   # Italic
+        '`': '</code>' # Code
+    }
+    
+    # # Handle bold, italic, and code with proper opening tags
+    # text = text.replace('**', '<b>', 1)
+    # text = text.replace('*', '<i>', 1)
+    # text = text.replace('`', '<code>', 1)
+    
+    # Apply all other replacements
+    for old, new in replacements.items():
+        text = text.replace(old, new)
+    
+    return text

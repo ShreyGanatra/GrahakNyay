@@ -1,13 +1,30 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
 body {
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    /* font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; */
+    font-family: 'Inter', sans-serif;
     margin: 0;
     padding: 0;
     background-color: #2f3136;
     color: #ffffff;
     display: flex;
+    flex-direction: column;
     height: 100vh;
     overflow: hidden;
 }
+
+.header {
+    background-color: #202225;
+    padding: 15px 20px;
+    text-align: center;
+    /* width: 100%; */
+}
+
+.logo {
+    color: #faa61a;
+    font-size: 24px;
+    font-weight: bold;
+}
+
 .sidebar {
     width: 250px;
     background-color: #202225;
@@ -19,14 +36,22 @@ body {
     flex-grow: 1;
     display: flex;
     flex-direction: column;
-    height: 100vh;
+    /* height: 100vh; */
+    position: relative;
+    overflow: hidden;
 }
 .chat-area {
+    /* This rule defines the layout but keeps it hidden by default */
+    display: none;
     flex-grow: 1;
-    display: flex;
     flex-direction: column;
     padding: 20px;
     overflow: hidden;
+}
+
+.chat-area.visible {
+    /* This rule makes it visible as a flex container ONLY when the .visible class is added */
+    display: flex;
 }
 .chat-container {
     flex-grow: 1;
@@ -152,7 +177,7 @@ footer {
     color: #202225;
     font-weight: bold;
 }
-.logo {
+/* .logo {
     display: flex;
     align-items: center;
     color: #faa61a;
@@ -164,7 +189,7 @@ footer {
     width: 40px;
     height: 40px;
     margin-right: 10px;
-}
+} */
 .menu-toggle {
     display: none;
     background-color: #faa61a;
@@ -188,6 +213,105 @@ footer {
 }
 #copy-chat-button:hover {
     background-color: #2980b9;
+}
+
+#reset-chat-button {
+    position: fixed;
+    top: 10px;
+    right: 120px; /* so it doesn't overlap copy button */
+    z-index: 1000;
+    padding: 10px 20px;
+    background-color: #e74c3c; /* red for reset */
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+}
+#reset-chat-button:hover {
+    background-color: #c0392b;
+}
+
+
+/* ========================================= */
+/* ==       Model Selection Styling       == */
+/* ========================================= */
+
+/* This is the main container for the selection form */
+#model-selection {
+    /* Flexbox for easy centering of its children */
+    display: flex;
+    flex-direction: column; /* Stack items vertically */
+    align-items: center;    /* Center items horizontally */
+    justify-content: center;/* Center items vertically */
+
+    /* Sizing and Spacing */
+    max-width: 500px;       /* Set a max width for larger screens */
+    margin: 4rem auto;      /* Center the box on the page with space on top/bottom */
+    padding: 40px 30px;     /* Generous padding inside the box */
+    
+    /* Appearance */
+    background-color: #f5f5f586; /* A clean white background */
+    border-radius: 16px;       /* Soft, rounded corners */
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12); /* A modern, soft shadow */
+    text-align: center;        /* Ensure text inside is centered */
+}
+
+/* Style for the "Select a model" label */
+#model-selection label {
+    font-size: 1.5rem; /* rem is good for accessibility */
+    font-weight: 600;
+    color: #000000; /* A dark, soft blue/grey */
+    margin-bottom: 25px; /* Space below the label */
+}
+
+/* Common styles for both the dropdown and the button */
+#model-selection select,
+#model-selection button {
+    font-family: inherit; /* Use the same font as the rest of the page */
+    font-size: 1rem;
+    padding: 14px 20px;
+    width: 100%; /* Make them take the full width of the container */
+    border-radius: 8px;
+    border: 1px solid #dcdfe6; /* A light grey border */
+    box-sizing: border-box; /* Important for consistent sizing */
+    margin-bottom: 20px;
+}
+
+/* Specific styling for the dropdown */
+#model-selection select {
+    /* Remove default browser appearance to apply our own styles */
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    
+    background-color: #c0d0e8; /* A very light grey background */
+    
+    /* Add a custom dropdown arrow using an SVG */
+    background-image: url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23606266%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E');
+    background-repeat: no-repeat;
+    background-position: right 15px top 50%;
+    background-size: .65em auto;
+    cursor: pointer;
+}
+
+/* Specific styling for the "Confirm" button */
+#model-selection button {
+    background-color: #0b4789; /* A nice, friendly blue */
+    color: #ffffff;
+    border: none;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background-color 0.2s ease-in-out, transform 0.1s ease;
+}
+
+/* An effect for when the user hovers over the button */
+#model-selection button:hover {
+    background-color: #0056b3; /* A darker shade of blue on hover */
+}
+
+/* An effect for when the user clicks the button */
+#model-selection button:active {
+    transform: scale(0.98); /* Slightly shrink the button on click */
 }
 
 @media (max-width: 768px) {
@@ -228,5 +352,17 @@ footer {
     #send-button {
         margin-left: 0;
         width: 100%;
+    }
+}
+
+@media (max-width: 480px) {
+    footer {
+        display: none;
+    }
+    .examples-container {
+        display: none;
+    }
+    #copy-chat-button {
+        display: none;
     }
 }

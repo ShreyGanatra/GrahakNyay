@@ -9,16 +9,23 @@
 </head>
 <body>
     <button id="copy-chat-button" onclick="copyChatHistory()">Copy Chat</button>
-    <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
-    <div class="sidebar" id="sidebar">
+    <button id="reset-chat-button" onclick="resetChat()">Reset Chat</button>
+    <!-- <button class="menu-toggle" onclick="toggleSidebar()">☰</button> -->
+    <!-- <div class="sidebar" id="sidebar"> -->
+    <div class="header">
         <div class="logo">
             <!-- <img src="/path-to-your-logo.png" alt="Grahak Nyay"> -->
             Grahak Nyay
         </div>
-        <div class="sidebar-item">Our Mission</div>
-        <div class="sidebar-item">About Us</div>
+        <!-- <div class="sidebar-item">Our Mission</div> -->
+        <!-- <div class="sidebar-item">About Us</div> -->
     </div>
     <div class="main-content">
+        <div id="model-selection">
+            <label for="model-dropdown">Select a model:</label>
+            <select id="model-dropdown"></select>
+            <button id="confirm-model">Confirm</button>
+        </div>
         <div class="chat-area">
             <div class="chat-container" id="chat-container"></div>
             <div class="examples-container" id="examples-container">
@@ -36,7 +43,8 @@
             </div>
         </div>
         <footer>
-            Developed under the LegalLLM project - a collaboration of IITB, NLSIU and META
+            <p>This is a beta version of the chatbot developed through a collaborative project between IITB, NLSIU, META, DOCA and NIC</p>
+            <p>By using this chatbot you agree to our <a href="{{ url_for('terms_of_use') }}" >terms of use</a>. All rights reserved.</p>
         </footer>
     </div>
 
@@ -44,6 +52,52 @@
         let sessionId;
         const baseUrl = '/consumer_chatbot';
         let firstMessageSent = false;
+
+
+        $(document).ready(function() {
+            // 1. Get a session ID as soon as the page loads.
+            fetch(`${baseUrl}/get_session_id`)
+                .then(response => response.json())
+                .then(data => {
+                    sessionId = data.session_id;
+                    console.log("Session ID obtained:", sessionId);
+                });
+
+            // 2. Fetch the models for the dropdown.
+            fetch(`${baseUrl}/get_models`)
+                .then(res => res.json())
+                .then(data => {
+                    const models = data.models;
+                    const dropdown = $('#model-dropdown');
+                    models.forEach(m => {
+                        dropdown.append(`<option value="${m}">${m}</option>`);
+                    });
+                });
+
+            $('#confirm-model').click(function() {
+                if (!sessionId) {
+                    alert("Could not establish a session. Please refresh the page.");
+                    return;
+                }
+                const selectedModel = $('#model-dropdown').val();
+                
+                // 3. Set the model
+                fetch(`${baseUrl}/set_model`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ model: selectedModel, session_id: sessionId })
+                })
+                .then(res => res.json())
+                .then(data => {
+                    console.log(data.message);
+                    // 4. NOW show the chat and get the initial message.
+                    $('#model-selection').hide();
+                    $('.chat-area').addClass('visible'); // Show the parent container
+                    getInitialMessage();
+                });
+            });
+        });
+
 
         function copyChatHistory() {
             $.ajax({
@@ -64,6 +118,39 @@
                 }
             });
         }
+
+        function resetChat() {
+            if (!sessionId) return;
+
+            $.ajax({
+                url: `${baseUrl}/reset_session`,
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({ session_id: sessionId }),
+                success: function(response) {
+                    console.log(response.message);
+                    $('#chat-container').empty();
+                    
+                    // **FIX:** Show model selection again and hide chat
+                    $('.chat-area').removeClass('visible');
+                    $('#model-selection').show();
+                    
+                    // Get a new session ID for the next round
+                    fetch(`${baseUrl}/get_session_id`)
+                        .then(response => response.json())
+                        .then(data => {
+                            sessionId = data.session_id;
+                            console.log("New Session ID after reset:", sessionId);
+                        });
+                    alert('Chat has been reset. Please select a model to continue.');
+                },
+                error: function(xhr, status, error) {
+                    console.error('Error resetting chat:', error);
+                }
+            });
+        }
+
+
         
         function copyTextToClipboard(text) {
             if (navigator.clipboard && window.isSecureContext) {
@@ -178,72 +265,6 @@
                 // Handle context data as needed
             });
         }
-        // async function sendMessage(message = null) {
-        //     if (!message) {
-        //         message = $('#user-input').val();
-        //     }
-        //     if (message.trim() === '') return;
-
-        //     if (!firstMessageSent) {
-        //         hideExamples();
-        //     }
-
-        //     disableSendButton();
-
-        //     $('#chat-container').append('<div class="message user-message">' + message + '</div>');
-        //     $('#user-input').val('');
-        //     $('#processing-spinner').show();
-            
-        //     $.ajax({
-        //         url: `${baseUrl}/chat`,
-        //         type: 'POST',
-        //         contentType: 'application/json',
-        //         data: JSON.stringify({message: message, session_id: sessionId}),
-        //         success: function(response) {
-        //             var botMessageDiv = $('<div class="message bot-message"></div>');
-        //             botMessageDiv.html(response.response);
-        //             console.log(response.content);
-        //             $('#chat-container').append(botMessageDiv);
-        //             $('#chat-container').scrollTop($('#chat-container')[0].scrollHeight);
-        //         },
-        //         error: function(xhr, status, error) {
-        //             alert('Error: ' + xhr.responseJSON.error);
-        //         },
-        //         complete: function() {
-        //             $('#processing-spinner').hide();
-        //             enableSendButton();
-        //         }
-        //     });
-            // let isNewMessage = true;
-
-            // const source = new EventSource(`${baseUrl}/chat?message=${message}&session_id=${sessionId}`);
-
-            // source.onmessage = function(event) {
-            //     const data = event.data;
-            //     if (isNewMessage) {
-            //         $('#chat-container').append('<div class="message bot-message-stream">' + data + '</div>');
-            //         isNewMessage = false;
-            //     } else{
-            //         $('#chat-container').find('.bot-message-stream').last().append(data);
-            //     }
-            
-            //     $('#chat-container').scrollTop($('#chat-container')[0].scrollHeight);
-            // }
-            // source.onerror = function(event) {
-            //     console.log("Error: ", event);
-            //     source.close();
-            //     $('#processing-spinner').hide();
-            //     isNewMessage = true;
-            //     enableSendButton();
-            // };
-            // source.addEventListener('done', function(event) {
-            //     isNewMessage = true; // Prepare for a new message block on the next message
-            //     source.close();
-            //     $('#processing-spinner').hide();
-            //     enableSendButton();
-            // });
-        // };
-            
 
         $('#user-input').keypress(function(e) {
             if (e.which == 13 && !$('#send-button').prop('disabled')) {
@@ -260,7 +281,7 @@
             $('#sidebar').toggle();
         }
 
-        getSessionId();
+        // getSessionId();
     </script>
     
 </body>

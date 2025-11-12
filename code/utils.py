@@ -9,8 +9,8 @@ from langchain_huggingface import (
 from langchain_openai import ChatOpenAI
 from transformers import AutoTokenizer, AutoModelForCausalLM, TextStreamer, pipeline
 from langchain_core.prompts import MessagesPlaceholder, ChatPromptTemplate
-from langchain.chains.combine_documents import create_stuff_documents_chain
-from langchain.chains import create_history_aware_retriever, create_retrieval_chain
+from langchain_classic.chains.combine_documents import create_stuff_documents_chain
+from langchain_classic.chains import create_history_aware_retriever, create_retrieval_chain
 from datetime import datetime
 import os
 from prompts import get_prompt
@@ -24,7 +24,7 @@ current_path = os.path.dirname(os.path.realpath(__file__))
 # ======================== START ==========================
 
 import docx
-from langchain.docstore.document import Document
+from langchain_core.documents import Document
 
 def load_sectoral_docs():
     """Load and chunk all SectoralQA/*.docx files."""
